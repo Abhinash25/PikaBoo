@@ -52,29 +52,14 @@ PostgreSQL is included in the application architecture for application data and 
 
 The current system is composed of the following components:
 
-User
-  |
-  v
-React + TypeScript Dashboard
-  |
-  v
-Backend API
-  |
-  v
-VPN Node Controller
-  |
-  v
-WireGuard Server (Kali Linux)
-  |
-  v
-Linux Routing + NAT
-  |
-  v
-Internet
+<img width="870" height="821" alt="image" src="https://github.com/user-attachments/assets/d440a1e6-e287-4475-8dd9-991276c65213" />
+
 
 PostgreSQL supports application data management. The frontend, backend, database, and VPN node form the main layers of the project.
 
 ## 6. Technologies Used
+
+<img width="1593" height="773" alt="image" src="https://github.com/user-attachments/assets/18448e31-8f44-49f4-8cee-4341eb734d8f" />
 
 
 ## 7. Current Testing and Results
