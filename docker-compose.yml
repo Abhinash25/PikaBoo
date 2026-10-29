@@ -1,0 +1,161 @@
+# ============================================================================
+# PRIVACY GATEWAY — DOCKER COMPOSE DEVELOPMENT & SERVICE ORCHESTRATION
+# Phase 1 Foundation: Secure Defaults, Least Privilege, Isolated Networks
+# ============================================================================
+
+version: '3.9'
+
+services:
+  # 1. PostgreSQL Relational Database (With UUID & Crypto Extensions)
+  postgres:
+    image: postgres:16.2-alpine
+    container_name: pg_database
+    restart: unless-stopped
+    user: "postgres"
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-privacy_gateway}
+      POSTGRES_USER: ${POSTGRES_USER:-pgadmin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pgsecret_change_in_production}
+    volumes:
+      - pgdata:/var/lib/postgresql/data:rw
+      - ./infrastructure/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - pg-internal-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pgadmin} -d ${POSTGRES_DB:-privacy_gateway}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # 2. Redis In-Memory Real-time Event Bus & Cache
+  redis:
+    image: redis:7.2-alpine
+    container_name: pg_redis
+    restart: unless-stopped
+    user: "999:999"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-redissecret_change_in_production}"]
+    volumes:
+      - redisdata:/data:rw
+    networks:
+      - pg-internal-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redissecret_change_in_production}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # 3. Privacy Gateway Core API Service
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: pg_api
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      RUN_STANDALONE: "true"
+      PORT: 3000
+      HOST: 0.0.0.0
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-privacy_gateway}
+      POSTGRES_USER: ${POSTGRES_USER:-pgadmin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pgsecret_change_in_production}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redissecret_change_in_production}
+    ports:
+      - "3000:3000"
+    networks:
+      - pg-internal-net
+      - pg-public-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health/live || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+#   # 4. Phase 3 WireGuard VPN Node (Data Plane)
+#   vpn:
+#     build:
+#       context: .
+#       dockerfile: docker/vpn/Dockerfile
+#     container_name: pg_vpn
+#     restart: unless-stopped
+#     cap_add:
+#       - NET_ADMIN
+#     sysctls:
+#       - net.ipv4.ip_forward=1
+#     environment:
+#       NODE_API_TOKEN: ${VPN_NODE_API_TOKEN:-dev_secret_token_123}
+#       PORT: 4000
+#     ports:
+#       - "51820:51820/udp"
+#     networks:
+#       - pg-internal-net
+#     healthcheck:
+#       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000/health || exit 1"]
+#       interval: 10s
+#       timeout: 3s
+#       retries: 3
+#     deploy:
+#       resources:
+#         limits:
+#           cpus: '1.0'
+#           memory: 512M
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+
+networks:
+  pg-internal-net:
+    internal: true
+    driver: bridge
+  pg-public-net:
+    driver: bridge

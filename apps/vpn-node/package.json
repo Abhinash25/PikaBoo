@@ -1,0 +1,19 @@
+{
+  "name": "vpn-node",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node dist/server.js",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "helmet": "^7.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.12.7",
+    "typescript": "^5.4.5"
+  }
+}

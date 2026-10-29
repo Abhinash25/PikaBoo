@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@apps/*": ["./apps/*"],
+      "@shared/*": ["./packages/shared-types/src/*"],
+      "@privacy-gateway/shared-types": ["./packages/shared-types/src/index.ts"]
+    }
+  },
+  "include": [
+    "src",
+    "apps",
+    "packages",
+    "infrastructure",
+    "server.ts",
+    "vite.config.ts"
+  ]
+}
